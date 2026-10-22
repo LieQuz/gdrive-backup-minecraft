@@ -39,7 +39,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 生成物:
 
 ```
-build/libs/gdrivebackup-1.0.2.jar
+build/libs/gdrivebackup-1.0.3.jar
 ```
 
 テスト:
@@ -50,7 +50,7 @@ build/libs/gdrivebackup-1.0.2.jar
 
 ## インストール
 
-1. `gdrivebackup-1.0.2.jar` をサーバーの `mods/` に置く
+1. `gdrivebackup-1.0.3.jar` をサーバーの `mods/` に置く
 2. サーバーを一度起動する
 3. `config/gdrivebackup-common.toml` が生成される
 4. Google Drive を使う場合は [Google Drive セットアップ](docs/google-drive-setup.md) を行う
@@ -93,7 +93,7 @@ Docker の場合は `mods/` ではなく、マウントしている `data/mods/`
 | `local-dir` | `"backups/gdrivebackup"` | staging と ZIP の保存先。Docker では `/backups/gdrivebackup` 推奨 |
 | `include-mods` | `false` | `mods/` 本体を含める。false でも `mods-manifest.json` は含む |
 | `include-config` | `true` | `config/` と `defaultconfigs/` を含める |
-| `keep-local` | `2` | ローカルに残す ZIP 数 |
+| `keep-local` | `2` | ローカルに残す ZIP 数。`0` はDriveアップロード成功後にローカルZIPを削除（失敗時・Drive無効時は1つ残す） |
 | `min-free-gb` | `5` | バックアップ後に確保する空き容量 |
 | `compression-level` | `1` | ZIP 圧縮レベル（0〜9） |
 | `max-freeze-seconds` | `45` | `save-off` 中の最大許容秒数。超えたらバックアップを中断して `save-on` に戻す。0で無効 |
@@ -127,6 +127,8 @@ OP レベル4以上、またはコンソール/RCON から実行できます。
 | `/gdrivebackup auth`            | Google Drive デバイス認証を開始  |
 | `/gdrivebackup revoke`          | Google Drive 認証を取り消す    |
 | `/gdrivebackup list`            | Drive 上のバックアップ一覧        |
+| `/gdrivebackup prune`           | Drive の保持ポリシーを今すぐ適用     |
+| `/gdrivebackup cleanup`         | ローカルの保持ポリシーを今すぐ適用    |
 | `/gdrivebackup verify [name]`   | Drive とローカルのサイズ/MD5 を検証 |
 | `/gdrivebackup download <name>` | 復元用にダウンロード              |
 | `/gdrivebackup reload`          | スケジュール設定を再読込            |
@@ -169,8 +171,40 @@ RCON では先頭の `/` は不要です。
 
 ### 注意: 容量
 
-ZIP は毎回フルバックアップです。5〜20GB のワールドでは、staging と ZIP の作成に
-**ワールドサイズの約2倍 + 5GB** の空き容量を見込んでください。
+ZIP は毎回フルバックアップです。`keep-local` とワールドサイズWから、必要な空き容量の目安を計算してください。
+
+| 設定 | バックアップ中のピーク |
+|---|---:|
+| `keep-local = 0`（Drive成功時） | 約 3W + 5GB（ワールド + staging + 新ZIP） |
+| `keep-local = 1` | 約 4W + 5GB（既存ZIP + staging + 新ZIP + ワールド） |
+| `keep-local = 2` | 約 5W + 5GB |
+
+`keep-local = 0` はアップロード成功後にローカルZIPを消すため、定常状態のローカル使用量を最小にできます。
+アップロード失敗時やDrive無効時は、復旧用に最低1つ残します。
+
+### ディスクが足りない場合
+
+1. 設定を変更
+   ```toml
+   [backup]
+   keep-local = 0
+   [drive]
+   keep-remote = 3
+   ```
+2. すぐに整理する
+   ```
+   gdrivebackup prune
+   gdrivebackup cleanup
+   ```
+   - `prune`: Drive上の古いバックアップを削除
+   - `cleanup`: ローカルの古いZIPを削除
+3. Wingsの場合は `local-dir` を別ボリュームに置く
+   ```toml
+   [backup]
+   local-dir = "/home/container/backups/gdrivebackup"
+   ```
+   管理者が大きいボリュームをマウントできるなら、そのパスを指定してください。
+4. サーバー再起動時、中断したバックアップの `staging/` と `*.zip.part` は自動削除されます。
 
 Docker では `backups` を専用ボリュームにしてください。
 
@@ -180,7 +214,7 @@ Docker では `backups` を専用ボリュームにしてください。
 
 ```bash
 mkdir -p data/mods backups
-cp build/libs/gdrivebackup-1.0.2.jar data/mods/
+cp build/libs/gdrivebackup-1.0.3.jar data/mods/
 docker compose up -d
 ```
 

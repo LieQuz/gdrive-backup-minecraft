@@ -40,6 +40,10 @@ public final class BackupCommands {
                                 .executes(context -> revoke(context.getSource())))
                         .then(Commands.literal("list")
                                 .executes(context -> list(context.getSource())))
+                        .then(Commands.literal("prune")
+                                .executes(context -> prune(context.getSource())))
+                        .then(Commands.literal("cleanup")
+                                .executes(context -> cleanup(context.getSource())))
                         .then(Commands.literal("verify")
                                 .executes(context -> verify(context.getSource(), null))
                                 .then(Commands.argument("name", StringArgumentType.greedyString())
@@ -155,6 +159,44 @@ public final class BackupCommands {
             } catch (Throwable t) {
                 Log.error("Could not list Google Drive backups", t);
                 sendAsync(source, "Drive list failed: " + t.getMessage(), true);
+            }
+        });
+        return 1;
+    }
+
+    private static int prune(CommandSourceStack source) {
+        BackupRuntime runtime = GDriveBackup.runtime();
+        if (runtime == null) {
+            source.sendFailure(Component.literal("GDrive Backup is not initialized."));
+            return 0;
+        }
+        line(source, "Pruning old Google Drive backups...");
+        runtime.executeDrive(() -> {
+            try {
+                int deleted = runtime.drive().pruneNow();
+                sendAsync(source, "Drive cleanup: removed " + deleted + " old backup(s).", false);
+            } catch (Throwable t) {
+                Log.error("Could not prune Google Drive backups", t);
+                sendAsync(source, "Drive prune failed: " + t.getMessage(), true);
+            }
+        });
+        return 1;
+    }
+
+    private static int cleanup(CommandSourceStack source) {
+        BackupRuntime runtime = GDriveBackup.runtime();
+        if (runtime == null) {
+            source.sendFailure(Component.literal("GDrive Backup is not initialized."));
+            return 0;
+        }
+        line(source, "Cleaning old local backup archives...");
+        runtime.executeDrive(() -> {
+            try {
+                int deleted = runtime.manager().cleanupLocalNow();
+                sendAsync(source, "Local cleanup: removed " + deleted + " old archive(s).", false);
+            } catch (Throwable t) {
+                Log.error("Could not clean local backups", t);
+                sendAsync(source, "Local cleanup failed: " + t.getMessage(), true);
             }
         });
         return 1;

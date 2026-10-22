@@ -200,6 +200,7 @@ public final class BackupManager {
                             "ZIP progress: {} / {}", Text.formatBytes(processed), Text.formatBytes(bytes))
             );
 
+            boolean uploadedToDrive = false;
             if (drive.isEnabled()) {
                 stage = "uploading";
                 DriveService.UploadRequest upload = DriveService.UploadRequest.fromPlan(
@@ -210,6 +211,7 @@ public final class BackupManager {
                     drive.upload(upload);
                     state.pendingUpload = null;
                     saveStateQuietly();
+                    uploadedToDrive = true;
                 } catch (RuntimeException e) {
                     if (drive.isRequired()) {
                         throw e;
@@ -223,7 +225,7 @@ public final class BackupManager {
 
             stage = "retention";
             try {
-                applyLocalRetention(plan.localDir(), archive.archive());
+                applyLocalRetention(plan.localDir(), archive.archive(), uploadedToDrive);
             } catch (IOException e) {
                 Log.warn("Could not apply local retention policy", e);
             }
@@ -436,7 +438,8 @@ public final class BackupManager {
         return copiers.stream().mapToLong(SnapshotCopier::byteCount).sum();
     }
 
-    private void applyLocalRetention(Path localDir, Path currentArchive) throws IOException {
+    private int applyLocalRetention(Path localDir, Path currentArchive, boolean uploadedToDrive)
+            throws IOException {
         List<Path> archives = new ArrayList<>();
         try (Stream<Path> stream = Files.list(localDir)) {
             stream.filter(Files::isRegularFile)
@@ -448,37 +451,58 @@ public final class BackupManager {
         }
 
         List<Path> sorted = RetentionPolicy.sortNewestFirst(archives);
-        int keep = Math.max(1, Config.KEEP_LOCAL.get());
+        int keep = Config.KEEP_LOCAL.get();
+        if (!uploadedToDrive) {
+            // Keep at least one local copy if Drive is disabled or the upload failed.
+            keep = Math.max(1, keep);
+        }
+
+        int deleted = 0;
         for (int i = 0; i < sorted.size(); i++) {
             Path archive = sorted.get(i);
-            if (i < keep || archive.equals(currentArchive)) {
+            if (i < keep) {
+                continue;
+            }
+            if (keep > 0 && archive.equals(currentArchive)) {
                 continue;
             }
             Files.deleteIfExists(archive);
+            deleted++;
             Log.info("Removed old local backup {}", archive.getFileName());
         }
+        return deleted;
+    }
+
+    public int cleanupLocalNow() throws IOException {
+        if (isRunning()) {
+            throw new BackupException("Cannot clean local backups while a backup is running.");
+        }
+        Path localDir = BackupPlan.resolve(serverRoot, Config.LOCAL_DIR.get());
+        return applyLocalRetention(localDir, null, false);
     }
 
     private void cleanupOldStaging() {
         Path localDir = BackupPlan.resolve(serverRoot, Config.LOCAL_DIR.get());
         Path stagingDir = localDir.resolve("staging");
-        if (!Files.isDirectory(stagingDir)) {
+        if (!Files.isDirectory(localDir)) {
             return;
         }
-        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
-        try (Stream<Path> stream = Files.list(stagingDir)) {
-            for (Path path : stream.toList()) {
-                try {
-                    if (Files.getLastModifiedTime(path).toMillis() < cutoff) {
+
+        // At startup no backup can be active. Remove every incomplete staging
+        // directory and partial ZIP left by a crash or forced shutdown.
+        if (Files.isDirectory(stagingDir)) {
+            try (Stream<Path> stream = Files.list(stagingDir)) {
+                for (Path path : stream.toList()) {
+                    try {
                         deleteRecursively(path);
                         Log.info("Removed stale staging path {}", path.getFileName());
+                    } catch (IOException e) {
+                        Log.warn("Could not remove stale staging path {}", path, e);
                     }
-                } catch (IOException e) {
-                    Log.warn("Could not inspect stale staging path {}", path, e);
                 }
+            } catch (IOException e) {
+                Log.warn("Could not scan staging directory {}", stagingDir, e);
             }
-        } catch (IOException e) {
-            Log.warn("Could not scan staging directory {}", stagingDir, e);
         }
 
         try (Stream<Path> stream = Files.list(localDir)) {
@@ -488,12 +512,10 @@ public final class BackupManager {
                     continue;
                 }
                 try {
-                    if (Files.getLastModifiedTime(path).toMillis() < cutoff) {
-                        Files.deleteIfExists(path);
-                        Log.info("Removed stale partial archive {}", name);
-                    }
+                    Files.deleteIfExists(path);
+                    Log.info("Removed stale partial archive {}", name);
                 } catch (IOException e) {
-                    Log.warn("Could not inspect partial archive {}", path, e);
+                    Log.warn("Could not remove partial archive {}", path, e);
                 }
             }
         } catch (IOException e) {

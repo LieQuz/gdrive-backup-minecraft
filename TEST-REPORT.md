@@ -5,6 +5,7 @@
 
 > v1.0.1 で Google Drive の `md5Checksum` が hex で返る問題を修正しました。
 > v1.0.2 で Drive の保持クリーンアップ一覧クエリのURLエンコードを修正しました。
+> v1.0.3 で `keep-local=0`、`/gdrivebackup prune`、`/gdrivebackup cleanup`、起動時のstaging自動削除を追加しました。
 
 ## 目的
 

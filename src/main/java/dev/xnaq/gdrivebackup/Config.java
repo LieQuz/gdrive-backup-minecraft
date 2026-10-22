@@ -68,8 +68,9 @@ public final class Config {
                 .comment("Include config/ and defaultconfigs/ in the archive.")
                 .define("include-config", true);
         KEEP_LOCAL = builder
-                .comment("Number of local ZIP archives to keep (including the newest).")
-                .defineInRange("keep-local", 2, 1, 100);
+                .comment("Number of local ZIP archives to keep. 0 deletes the local ZIP after a successful "
+                        + "Drive upload; a local copy is still kept when upload fails or Drive is disabled.")
+                .defineInRange("keep-local", 2, 0, 100);
         MIN_FREE_GB = builder
                 .comment("Minimum free space to keep on the backup volume after staging and ZIP creation.")
                 .defineInRange("min-free-gb", 5, 1, 1000);

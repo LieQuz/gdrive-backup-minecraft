@@ -227,22 +227,32 @@ public final class DriveService {
         return folderId;
     }
 
-    private void prune(String folderId, String uploadedName) {
+    public int pruneNow() {
+        ensureAuthorized();
+        state.ensureServerId();
+        String folderId = ensureServerFolder(state.serverId, serverName());
+        return prune(folderId, null);
+    }
+
+    private int prune(String folderId, String uploadedName) {
         int keep = Math.max(1, Config.KEEP_REMOTE.get());
         List<RemoteFile> files = client.listFiles(folderId);
         files.sort(Comparator.comparing(RemoteFile::createdAt).reversed());
+        int deleted = 0;
         for (int i = 0; i < files.size(); i++) {
             RemoteFile file = files.get(i);
-            if (i < keep || file.name().equals(uploadedName)) {
+            if (i < keep || (uploadedName != null && file.name().equals(uploadedName))) {
                 continue;
             }
             try {
                 client.deleteFile(file.id());
+                deleted++;
                 Log.info("Removed old Drive backup {}", file.name());
             } catch (RuntimeException e) {
                 Log.warn("Could not remove old Drive backup {}", file.name(), e);
             }
         }
+        return deleted;
     }
 
     private void ensureAuthorized() {
