@@ -1,7 +1,9 @@
 package dev.xnaq.gdrivebackup.drive;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -11,9 +13,11 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -119,6 +123,44 @@ class DriveClientTest {
         assertEquals(data.length, uploaded.size());
         assertEquals(data.length, received.get());
         assertEquals(3, putCount.get());
+    }
+
+    @Test
+    void listFilesEncodesOrderBy() throws Exception {
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        int port = server.getAddress().getPort();
+        AtomicReference<String> rawQuery = new AtomicReference<>();
+
+        server.createContext("/drive/v3/files", exchange -> {
+            rawQuery.set(exchange.getRequestURI().getRawQuery());
+            respond(exchange, 200, "{\"files\":[]}");
+        });
+        server.start();
+
+        AccessTokenProvider tokens = new AccessTokenProvider() {
+            @Override
+            public String accessToken() {
+                return "test-token";
+            }
+
+            @Override
+            public void invalidateAccessToken() {
+            }
+        };
+
+        DriveClient client = new DriveClient(
+                tokens,
+                1,
+                256 * 1024,
+                "http://127.0.0.1:" + port + "/drive/v3",
+                "http://127.0.0.1:" + port + "/upload/drive/v3"
+        );
+
+        List<RemoteFile> files = client.listFiles("folder-id");
+        assertTrue(files.isEmpty());
+        assertNotNull(rawQuery.get());
+        assertTrue(rawQuery.get().contains("orderBy=createdTime%20desc"));
+        assertFalse(rawQuery.get().contains(" "));
     }
 
     private static void respond(HttpExchange exchange, int status, String body) throws IOException {

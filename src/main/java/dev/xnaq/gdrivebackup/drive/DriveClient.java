@@ -153,8 +153,8 @@ public final class DriveClient {
                     + " and trashed=false"
                     + " and appProperties has { key='managedBy' and value='gdrivebackup' }";
             String url = apiBase + "/files?q=" + encode(query)
-                    + "&fields=files(id,name,size,createdTime,md5Checksum,appProperties),nextPageToken"
-                    + "&pageSize=1000&orderBy=createdTime desc&spaces=drive"
+                    + "&fields=" + encode("files(id,name,size,createdTime,md5Checksum,appProperties),nextPageToken")
+                    + "&pageSize=1000&orderBy=" + encode("createdTime desc") + "&spaces=drive"
                     + (pageToken == null ? "" : "&pageToken=" + encode(pageToken));
             JsonObject response = getJson(url);
             if (response == null) {
