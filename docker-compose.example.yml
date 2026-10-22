@@ -1,6 +1,6 @@
 # Example for itzg/minecraft-server.
 #
-# 1. Put gdrivebackup-1.0.0.jar in ./data/mods/
+# 1. Put gdrivebackup-1.0.1.jar in ./data/mods/
 # 2. Put the OAuth client JSON in ./data/config/gdrivebackup/client_secret.json
 # 3. Set local-dir = "/backups/gdrivebackup" in ./data/config/gdrivebackup-common.toml
 # 4. Change RCON_PASSWORD before exposing anything.

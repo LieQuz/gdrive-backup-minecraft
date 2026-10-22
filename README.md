@@ -39,7 +39,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
 生成物:
 
 ```
-build/libs/gdrivebackup-1.0.0.jar
+build/libs/gdrivebackup-1.0.1.jar
 ```
 
 テスト:
@@ -50,7 +50,7 @@ build/libs/gdrivebackup-1.0.0.jar
 
 ## インストール
 
-1. `gdrivebackup-1.0.0.jar` をサーバーの `mods/` に置く
+1. `gdrivebackup-1.0.1.jar` をサーバーの `mods/` に置く
 2. サーバーを一度起動する
 3. `config/gdrivebackup-common.toml` が生成される
 4. Google Drive を使う場合は [Google Drive セットアップ](docs/google-drive-setup.md) を行う
@@ -120,16 +120,16 @@ Docker の場合は `mods/` ではなく、マウントしている `data/mods/`
 
 OP レベル4以上、またはコンソール/RCON から実行できます。
 
-| コマンド | 内容 |
-|---|---|
-| `/gdrivebackup status` | 実行状況・前回・次回・エラー・Drive 状態 |
-| `/gdrivebackup now [note]` | 手動バックアップ |
-| `/gdrivebackup auth` | Google Drive デバイス認証を開始 |
-| `/gdrivebackup revoke` | Google Drive 認証を取り消す |
-| `/gdrivebackup list` | Drive 上のバックアップ一覧 |
-| `/gdrivebackup verify [name]` | Drive とローカルのサイズ/MD5 を検証 |
-| `/gdrivebackup download <name>` | 復元用にダウンロード |
-| `/gdrivebackup reload` | スケジュール設定を再読込 |
+| コマンド                            | 内容                      |
+| ------------------------------- | ----------------------- |
+| `/gdrivebackup status`          | 実行状況・前回・次回・エラー・Drive 状態 |
+| `/gdrivebackup now [note]`      | 手動バックアップ                |
+| `/gdrivebackup auth`            | Google Drive デバイス認証を開始  |
+| `/gdrivebackup revoke`          | Google Drive 認証を取り消す    |
+| `/gdrivebackup list`            | Drive 上のバックアップ一覧        |
+| `/gdrivebackup verify [name]`   | Drive とローカルのサイズ/MD5 を検証 |
+| `/gdrivebackup download <name>` | 復元用にダウンロード              |
+| `/gdrivebackup reload`          | スケジュール設定を再読込            |
 
 RCON では先頭の `/` は不要です。
 
@@ -180,7 +180,7 @@ Docker では `backups` を専用ボリュームにしてください。
 
 ```bash
 mkdir -p data/mods backups
-cp build/libs/gdrivebackup-1.0.0.jar data/mods/
+cp build/libs/gdrivebackup-1.0.1.jar data/mods/
 docker compose up -d
 ```
 
@@ -228,7 +228,7 @@ docker exec -it minecraft-neoforge rcon-cli
 
 詳細: [TEST-REPORT.md](TEST-REPORT.md)
 
-- `./gradlew test`: 21テスト（cron、保持、ZIP、コピー整合性、freeze guard、resumable upload、OAuth Device Flow/更新、保留アップロード）
+- `./gradlew test`: 24テスト（cron、保持、ZIP、コピー整合性、freeze guard、resumable upload、OAuth Device Flow/更新、保留アップロード、MD5形式）
 - Docker本番相当環境（NeoForge 21.1.264 / Java 21）で以下を確認
   - Bot負荷中の763MBワールド: バックアップ成功、メモリ約5.1GBで安定、freeze約5秒
   - `max-freeze-seconds` 超過時にバックアップを中断し、サーバーはhealthy継続

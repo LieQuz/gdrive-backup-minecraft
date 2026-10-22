@@ -11,7 +11,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,8 +40,6 @@ class DriveClientTest {
         Path archive = tempDir.resolve("test.zip");
         Files.write(archive, data);
         String md5Hex = Hashing.md5(archive);
-        String md5Base64 = Base64.getEncoder().encodeToString(
-                java.util.HexFormat.of().parseHex(md5Hex));
 
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         AtomicLong received = new AtomicLong();
@@ -77,8 +74,9 @@ class DriveClientTest {
                     return;
                 }
 
+                // Google Drive API v3 returns md5Checksum as a hex string.
                 String json = "{\"id\":\"file-1\",\"name\":\"test.zip\",\"size\":" + total
-                        + ",\"md5Checksum\":\"" + md5Base64
+                        + ",\"md5Checksum\":\"" + md5Hex
                         + "\",\"createdTime\":\"2026-10-22T00:00:00Z\"}";
                 respond(exchange, 200, json);
             } catch (Throwable t) {

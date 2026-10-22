@@ -1,5 +1,6 @@
 package dev.xnaq.gdrivebackup.drive;
 
+import dev.xnaq.gdrivebackup.util.Checksums;
 import dev.xnaq.gdrivebackup.util.Log;
 import dev.xnaq.gdrivebackup.Config;
 import dev.xnaq.gdrivebackup.backup.BackupPlan;
@@ -12,9 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -176,10 +175,7 @@ public final class DriveService {
         }
         try {
             String localMd5 = Hashing.md5(local);
-            String localBase64 = Base64.getEncoder().encodeToString(
-                    HexFormat.of().parseHex(localMd5));
-            boolean match = remote.md5Checksum() == null
-                    || remote.md5Checksum().equals(localBase64);
+            boolean match = Checksums.md5Matches(remote.md5Checksum(), localMd5);
             return "Remote: " + name + ", " + Text.formatBytes(remote.size())
                     + ", checksum " + (match ? "OK" : "MISMATCH");
         } catch (IOException e) {

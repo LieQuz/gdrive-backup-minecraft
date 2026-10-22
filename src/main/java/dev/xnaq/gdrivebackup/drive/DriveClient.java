@@ -1,5 +1,6 @@
 package dev.xnaq.gdrivebackup.drive;
 
+import dev.xnaq.gdrivebackup.util.Checksums;
 import dev.xnaq.gdrivebackup.util.Log;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -26,7 +27,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -371,12 +371,10 @@ public final class DriveClient {
             deleteFile(file.id());
             throw new DriveException("Drive reported size " + file.size() + " but local size is " + size);
         }
-        if (file.md5Checksum() != null && md5Hex != null) {
-            String expected = Base64.getEncoder().encodeToString(HexFormat.of().parseHex(md5Hex));
-            if (!expected.equals(file.md5Checksum())) {
-                deleteFile(file.id());
-                throw new DriveException("Drive checksum does not match the local archive.");
-            }
+        if (file.md5Checksum() != null && md5Hex != null
+                && !Checksums.md5Matches(file.md5Checksum(), md5Hex)) {
+            deleteFile(file.id());
+            throw new DriveException("Drive checksum does not match the local archive.");
         }
     }
 
