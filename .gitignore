@@ -1,0 +1,19 @@
+.gradle/
+build/
+run/
+out/
+.idea/
+*.iml
+.DS_Store
+
+# Local server/development data
+data/
+backups/
+config/gdrivebackup/credentials.json
+
+# Local Docker test data
+test-data/
+test-backups/
+
+test-restore-data/
+test-restore-backups/

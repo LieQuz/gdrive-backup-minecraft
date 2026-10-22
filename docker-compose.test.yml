@@ -1,0 +1,25 @@
+# Production-like local test environment.
+# Uses offline mode and a dedicated data directory; never use this for a public server.
+services:
+  minecraft:
+    image: itzg/minecraft-server:java21
+    container_name: gdrivebackup-test
+    environment:
+      EULA: "TRUE"
+      TYPE: "NEOFORGE"
+      VERSION: "1.21.1"
+      NEOFORGE_VERSION: "21.1.264"
+      MEMORY: "6G"
+      TZ: "Asia/Tokyo"
+      ONLINE_MODE: "FALSE"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "test-rcon"
+      RCON_PORT: "25575"
+    ports:
+      - "127.0.0.1:25565:25565"
+      - "127.0.0.1:25575:25575"
+    volumes:
+      - ./test-data:/data
+      - ./test-backups:/backups
+    stop_grace_period: 120s
+    restart: "no"

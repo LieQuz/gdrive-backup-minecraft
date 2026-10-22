@@ -1,0 +1,30 @@
+# Example for itzg/minecraft-server.
+#
+# 1. Put gdrivebackup-1.0.0.jar in ./data/mods/
+# 2. Put the OAuth client JSON in ./data/config/gdrivebackup/client_secret.json
+# 3. Set local-dir = "/backups/gdrivebackup" in ./data/config/gdrivebackup-common.toml
+# 4. Change RCON_PASSWORD before exposing anything.
+#
+services:
+  minecraft:
+    image: itzg/minecraft-server:java21
+    container_name: minecraft-neoforge
+    environment:
+      EULA: "TRUE"
+      TYPE: "NEOFORGE"
+      VERSION: "1.21.1"
+      NEOFORGE_VERSION: "21.1.264"
+      # 5-20GB worlds need headroom while the snapshot is copied.
+      MEMORY: "8G"
+      TZ: "Asia/Tokyo"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "change-me"
+      RCON_PORT: "25575"
+    ports:
+      - "25565:25565"
+    volumes:
+      - ./data:/data
+      - ./backups:/backups
+    # Give the server time to finish the final consistency pass on shutdown.
+    stop_grace_period: 120s
+    restart: unless-stopped
